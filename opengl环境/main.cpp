@@ -35,7 +35,8 @@ const unsigned int SCR_WIDTH = 1000;
 const unsigned int SCR_HEIGHT = SCR_WIDTH*3024.0/4032.0;
 
 // camera
-Camera camera(glm::vec3(0.0f, 0.0f, 2.8f));
+// Start slightly above and looking down at the scene.
+Camera camera(glm::vec3(0.0f, 1.6f, 2.8f), glm::vec3(0.0f, 1.0f, 0.0f), -88.0f, -30.0f);
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -287,7 +288,7 @@ int main(int argc, const char * argv[]) {
 
             auto& finalBoneMatrices = animator->getFinalBoneMatrices();
 
-            // 传递到着色器
+            // 传递到着色器 骨骼动画变换矩阵
             for (auto& entry : finalBoneMatrices) {
                 string uniformName = "finalBonesMatrices[" + to_string(entry.first) + "]";
                 ourShader.setMat4(uniformName.c_str(), entry.second);

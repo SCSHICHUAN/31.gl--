@@ -870,8 +870,8 @@
 		F66B1BE72941B91100888396 /* opengl环境 */ = {
 			isa = PBXGroup;
 			children = (
-				F6F20F002F9CA474009E7F22 /* animation.cpp */,
 				F6F20EFF2F9CA467009E7F22 /* animation.h */,
+				F6F20F002F9CA474009E7F22 /* animation.cpp */,
 				F6F20EF02F9CA1C3009E7F22 /* Wolf-fbx */,
 				F6CD9B052CA11B810074C224 /* nanosuit */,
 				F6CD9A952C9AA2BB0074C224 /* assimp */,
