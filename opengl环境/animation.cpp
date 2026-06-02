@@ -17,6 +17,7 @@ static glm::mat4 AiToGlmMat4(const aiMatrix4x4& m) {
     );
 }
 
+// 从 Animation 的一条 Channel 加载关键帧序列(pos/rot/scale + timeStamp 格)
 Bone::Bone(const string& name, int ID, const aiNodeAnim* channel) {
     boneName = name;
     boneID = ID;
@@ -54,6 +55,7 @@ Bone::Bone(const string& name, int ID, const aiNodeAnim* channel) {
     }
 }
 
+// 按当前播放头(格)插值：localMat = T(pos) * R(rot) * S(scale)
 void Bone::update(float animationTime) {
     localTransform = interpolatePosition(animationTime) * interpolateRotation(animationTime) * interpolateScaling(animationTime);
 }
@@ -85,6 +87,7 @@ int Bone::getScaleIndex(float animationTime) {
     return 0;
 }
 
+// 两关键帧之间的插值系数 t，例：current=15 格，关键帧0~20 → t=15/20=0.75
 float Bone::getScaleFactor(float lastTimeStamp, float nextTimeStamp, float animationTime) {
     float scaleFactor = 0.0f;
     float midWayLength = animationTime - lastTimeStamp;
@@ -163,8 +166,8 @@ Animation::Animation(const string& name, const aiScene* scene, int animationInde
 
     aiAnimation* animation = scene->mAnimations[this->animationIndex];
     sourceName = (animation && animation->mName.length > 0) ? string(animation->mName.C_Str()) : string("<unnamed>");
-    duration = animation->mDuration;
-    ticksPerSecond = animation->mTicksPerSecond;
+    duration = animation->mDuration;           // 格(tick)，如 30 表示时间轴 30 格
+    ticksPerSecond = animation->mTicksPerSecond; // tick/s，如 25 → 真实 1 秒 = 25 格
     if (ticksPerSecond == 0) {
         // 一些 FBX 可能不给 ticksPerSecond，给个常用默认值避免时间不前进
         ticksPerSecond = 25;
@@ -178,6 +181,7 @@ Animation::Animation(const string& name, const aiScene* scene, int animationInde
         globalInverseTransform = glm::mat4(1.0f);
     }
 
+    // Channel：骨名 + 关键帧；仅当骨名在 boneInfoMap(Mesh 绑定) 中存在才创建
     for (int i = 0; i < animation->mNumChannels; i++) {
         aiNodeAnim* channel = animation->mChannels[i];
         string boneName = channel->mNodeName.data;
@@ -230,6 +234,7 @@ Animator::Animator(Animation* animation) {
 void Animator::updateAnimation(float dt) {
     deltaTime = dt;
     if (currentAnimation) {
+        // 播放头步进：格 += (tick/s) * 秒
         currentTime += currentAnimation->getTicksPerSecond() * dt;
         if (looping) {
             currentTime = fmod(currentTime, currentAnimation->getDuration());
@@ -239,6 +244,7 @@ void Animator::updateAnimation(float dt) {
         }
 
         finalBoneMatrices.clear();
+        // 从 Node 树根递归：插值 → 父子连乘 → 写入 finalBonesMatrices[id]
         calculateBoneTransform(currentAnimation->getScene()->mRootNode, glm::mat4(1.0f));
 
         // 每隔一段打印一次：确认动画链路确实在产生 bone 矩阵（避免“没看到输出”）
@@ -257,7 +263,7 @@ void Animator::updateAnimation(float dt) {
 
 void Animator::playAnimation(Animation* pAnimation, bool resetTime) {
     currentAnimation = pAnimation;
-    if (resetTime) currentTime = 0.0f;
+    if (resetTime) currentTime = 0.0f; // 切换 clip 时播放头回到 0 格
 }
 
 void Animator::calculateBoneTransform(const aiNode* node, glm::mat4 parentTransform) {
@@ -268,18 +274,20 @@ void Animator::calculateBoneTransform(const aiNode* node, glm::mat4 parentTransf
     std::string nodeName = node->mName.data;
     glm::mat4 nodeTransform = AiToGlmMat4(node->mTransformation);
 
+    // 按骨名匹配 Channel；无 Channel 则用节点静态变换(绑定姿势)
     Bone* bone = currentAnimation->findBone(nodeName);
     if (bone) {
         bone->update(currentTime);
         nodeTransform = bone->getLocalTransform();
     }
 
+    // 父骨骼全局 × 本骨局部
     glm::mat4 globalTransformation = parentTransform * nodeTransform;
 
     if (currentAnimation->getBoneInfoMap().find(nodeName) != currentAnimation->getBoneInfoMap().end()) {
         int boneIndex = currentAnimation->getBoneInfoMap()[nodeName].id;
         glm::mat4 offset = currentAnimation->getBoneInfoMap()[nodeName].offset;
-        // 标准蒙皮：globalInverse * global * offset（offset 为 inverse bind pose）
+        // finalBonesMatrices[id] = globalInverse * globalMat * invBind(offset)
         finalBoneMatrices[boneIndex] = currentAnimation->getGlobalInverseTransform() * globalTransformation * offset;
     }
 

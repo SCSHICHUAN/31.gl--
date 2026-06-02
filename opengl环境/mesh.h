@@ -30,8 +30,8 @@ struct Vertex {
 
     glm::vec3 Tangent;
     glm::vec3 Bitangent;
-    int m_BoneIDs[MAX_BONE_INFLUENCE];
-    float m_Weights[MAX_BONE_INFLUENCE];
+    int m_BoneIDs[MAX_BONE_INFLUENCE];    // 影响该顶点的骨骼 id，对应 finalBonesMatrices[id]
+    float m_Weights[MAX_BONE_INFLUENCE];  // 各骨权重，加载后不变
 
     Vertex() {
         for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {

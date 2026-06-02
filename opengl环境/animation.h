@@ -19,11 +19,13 @@
 
 using namespace std;
 
+// 蒙皮绑定：骨名 → 着色器用的索引 id、逆绑定矩阵 offset(invBind)
 struct BoneInfo {
     int id;
     glm::mat4 offset;
 };
 
+// 关键帧：位置 vec3 + 时间戳(格 tick)，如关键帧0、关键帧20
 struct KeyPosition {
     glm::vec3 position;
     float timeStamp;
@@ -68,10 +70,11 @@ private:
     glm::mat4 interpolateScaling(float animationTime);
 };
 
+// 一条动画 clip：Channel 列表(按骨名) + 时长(格) + 时间基(tick/s)
 class Animation {
 private:
-    float duration;
-    int ticksPerSecond;
+    float duration;       // 动画总长，单位：格(tick)
+    int ticksPerSecond;   // 时间基 tick/s，如 25 表示 1 秒走 25 格
     vector<Bone> bones;
     map<string, BoneInfo> boneInfoMap;
     int boneCount;
@@ -87,8 +90,8 @@ public:
     Bone* findBone(const string& name);
     map<string, BoneInfo>& getBoneInfoMap();
     int getBoneCount();
-    float getDuration();
-    int getTicksPerSecond();
+    float getDuration();        // 动画总长(格)
+    int getTicksPerSecond();    // 时间基 tick/s
     const aiScene* getScene() { return scene; }
     const glm::mat4& getGlobalInverseTransform() const { return globalInverseTransform; }
     int getAnimationIndex() const { return animationIndex; }
@@ -96,12 +99,13 @@ public:
     int getMatchedChannels() const { return (int)bones.size(); }
 };
 
+// 运行时驱动：推进播放头、沿 Node 树算矩阵，供着色器使用
 class Animator {
 private:
     Animation* currentAnimation;
-    float currentTime;
+    float currentTime;              // 播放头位置，单位：格(tick)
     float deltaTime;
-    map<int, glm::mat4> finalBoneMatrices;
+    map<int, glm::mat4> finalBoneMatrices; // 下标=骨骼id，CPU 算好的蒙皮矩阵
     bool looping;
 
 public:

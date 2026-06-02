@@ -171,7 +171,7 @@ private:
 
             cout << "Selected animation index: " << bestIndex << " duration: " << bestDuration << endl;
             
-            // build all animations (some may have 0 matched bones -> looks like "no animation")
+            // Scene.mAnimations[]：多条 clip 平行；每条含 Channel(骨名+关键帧 格)
             animations.reserve(scene->mNumAnimations);
             for (unsigned int i = 0; i < scene->mNumAnimations; ++i) {
                 animations.push_back(new Animation("Anim" + to_string(i), scene, (int)i, boneInfoMap, boneCount));
@@ -244,7 +244,7 @@ private:
             vertices.push_back(vertex);
         }
 
-        //处理骨骼数据
+        // Mesh 绑骨：顶点写入 m_BoneIDs + m_Weights（最多4根），登记 boneInfoMap(名→id, offset)
         if (mesh->mNumBones > 0) {
             for (unsigned int i = 0; i < mesh->mNumBones; i++) {
                 aiBone* bone = mesh->mBones[i];

@@ -41,9 +41,9 @@ float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 
-// timing
-float deltaTime = 0.0f;    // 当前帧和上一帧之间的时间
-float lastFrame = 0.0f;
+// timing（渲染循环：单次循环真实耗时，单位秒）
+float deltaTime = 0.0f;    // 本帧与上一帧时间差，用于推进动画播放头
+float lastFrame = 0.0f;     // 上一帧 glfwGetTime()
 
 // toggles
 bool gEnableModelRotation = true; // key '1'
@@ -182,7 +182,7 @@ int main(int argc, const char * argv[]) {
     // -----------
     while (!glfwWindowShouldClose(window))
     {
-        // per-frame time logic
+        // per-frame time logic：deltaTime = 本圈渲染耗时(秒)，帧率稳定时值基本固定
         // --------------------
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
@@ -248,7 +248,7 @@ int main(int argc, const char * argv[]) {
         
         
     
-        // 更新动画
+        // 更新动画：内部 currentTime(格) += tick/s * deltaTime，并计算 finalBonesMatrices
         if (animator && gEnableAnimation && !gAnimPaused) {
             animator->updateAnimation(deltaTime);
         }
@@ -275,7 +275,7 @@ int main(int argc, const char * argv[]) {
         ourShader.setVec3("viewPos", camera.Position);
         ourShader.setFloat("material.shininess", 32.0f);
 
-        // 传递骨骼变换矩阵
+        // 上传 CPU 已算好的蒙皮矩阵 finalBonesMatrices[id] → 顶点着色器加权混合
         if (animator && ourModel.getAnimation()) {
             // 先把所有骨骼矩阵初始化为单位矩阵，避免 shader 里采样到“未写入的 uniform”
             // （FBX 往往会引用很多 bone index；只传 map 里那部分会导致顶点变换结果随机/不可见）
@@ -288,7 +288,7 @@ int main(int argc, const char * argv[]) {
 
             auto& finalBoneMatrices = animator->getFinalBoneMatrices();
 
-            // 传递到着色器 骨骼动画变换矩阵
+            // 按骨骼索引 id 传入（与顶点 aBoneIDs 对应）
             for (auto& entry : finalBoneMatrices) {
                 string uniformName = "finalBonesMatrices[" + to_string(entry.first) + "]";
                 ourShader.setMat4(uniformName.c_str(), entry.second);
@@ -572,7 +572,7 @@ void processInput(GLFWwindow *window)
             return;
         }
         gAnimator->setLooping(loop);
-        gAnimator->playAnimation(a, true);
+        gAnimator->playAnimation(a, true); // resetTime：播放头 currentTime 归零(格)
         gEnableAnimation = true;
         gSelectedAnimIndex = idx;
         std::cout << "[Anim] switched to index " << idx
